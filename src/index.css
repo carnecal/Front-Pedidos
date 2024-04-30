@@ -2,14 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
-
-
-
-
-
-
-
 /* Estilos para el modal */
 .modal-overlay {
     position: fixed;

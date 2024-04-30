@@ -9,6 +9,7 @@ import Modal from "react-modal";
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import { ConsultarClientes, ConsultarClientexId } from "../api/Cliente.api";
 import { ConsultarProductosRequest } from "../api/Productos.api";
+import { useNavigate } from 'react-router-dom';
 
 function PedidoCard({ pedido }) {
   const { handleEmpacado, editarPedido, handleRefresh } = usePedidos();
@@ -21,10 +22,10 @@ function PedidoCard({ pedido }) {
       handleRefresh();
     };
   }, []);
-
+  const navigate = useNavigate();
   const handleRefrescar = () => {
     // Recargar la página
-    window.location.reload();
+    navigate('/PedidosCola');
   };
 
   useEffect(() => {
@@ -70,15 +71,15 @@ function PedidoCard({ pedido }) {
 
   useEffect(() => {
     const intervalId = setInterval(() => {
-      // Recargar la página
-      window.location.reload();
-    }, 20000); // Intervalo de 2000 milisegundos = 2 segundos
+      // Redireccionar a la ruta '/PedidosCola'
+      navigate('/PedidosCola');
+    }, 20000); // Intervalo de 20000 milisegundos = 20 segundos
 
     return () => {
       // Limpiar el temporizador cuando el componente se desmonte o actualice
       clearInterval(intervalId);
     };
-  }, []);
+  }, [navigate]);
 
   /** desglosando pedido */
   const [idCliente, setIdCliente] = useState("");
