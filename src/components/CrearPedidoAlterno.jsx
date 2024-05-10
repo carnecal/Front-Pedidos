@@ -1,6 +1,10 @@
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import { CrearPedidoRequest } from "../api/Pedido.api";
-import { ConsultarClientes, ConsultarClientexCodigo } from "../api/Cliente.api";
+import {
+  ConsultarClientes,
+  ConsultarClientexCodigo,
+  CrearCliente,
+} from "../api/Cliente.api";
 import { useEffect, useState } from "react";
 import { ConsultarProductosRequest } from "../api/Productos.api";
 import { ConsultarEmpleadoRequest } from "../api/Empleados.api";
@@ -14,6 +18,7 @@ const initialValues = {
   Peso: "",
   Producto: "",
   Observaciones: "",
+  ObservacionesG: "",
   Recibio: "",
 };
 
@@ -26,8 +31,23 @@ function CrearPedidoAlterno() {
     cargarProductos,
     cargarEmpleados,
     crearPedido,
+    crearCliente,
     handleRefresh,
   } = usePedidos();
+
+/** RECARGA PAGE DESPUES DE ABRIR MODAL Y CREAR CLIENTE */
+
+ // Estado para controlar si se debe recargar la página
+ const [clientesActualizados, setClientesActualizados] = useState(false);
+
+ // Efecto para detectar cambios en la lista de clientes
+ useEffect(() => {
+   if (clientesActualizados) {
+     // Recargar la página si se detecta un cambio en la lista de clientes
+     window.location.reload();
+     setClientesActualizados(false); // Restablecer el estado después de recargar la página
+   }
+ }, [clientesActualizados]);
 
   /** Consulta Clientes */
   useEffect(() => {
@@ -104,23 +124,25 @@ function CrearPedidoAlterno() {
 
   const handleInputChange2 = (event, index) => {
     const { value } = event.target;
-  
+
     // Creamos una copia del array de items
     const updatedItems = [...items];
-  
+
     // Actualizamos el valor del campo Producto para el ítem en la posición 'index'
     updatedItems[index] = {
       ...updatedItems[index],
       Producto: value,
     };
-  
+
     // Realiza la búsqueda en la base de datos para verificar si el producto existe
     const inputValue = value.toLowerCase().trim();
     if (inputValue.length >= MIN_CHARS_FOR_SEARCH_PRODUCT) {
       const productoEncontrado = productos.find(
-        (producto) => producto.Codigo.toLowerCase() === inputValue || producto.Nombre.toLowerCase() === inputValue
+        (producto) =>
+          producto.Codigo.toLowerCase() === inputValue ||
+          producto.Nombre.toLowerCase() === inputValue
       );
-  
+
       if (productoEncontrado) {
         // Actualiza solo el campo de producto del ítem específico
         updatedItems[index] = {
@@ -138,7 +160,7 @@ function CrearPedidoAlterno() {
       setProductoExistente(null);
       setShowModal2(false);
     }
-  
+
     // Actualizamos el estado 'items' con la nueva lista de ítems actualizada
     setItems(updatedItems);
   };
@@ -146,7 +168,10 @@ function CrearPedidoAlterno() {
   const handleInputBlurProducto = (index) => {
     // Verificamos si el producto existe en la base de datos
     const inputValue = items[index].Producto.toLowerCase().trim();
-    if (inputValue.length < MIN_CHARS_FOR_SEARCH_PRODUCT &&  inputValue.length >= MIN_CHARS_FOR_SEARCH_PRODUCT) {
+    if (
+      inputValue.length < MIN_CHARS_FOR_SEARCH_PRODUCT &&
+      inputValue.length >= MIN_CHARS_FOR_SEARCH_PRODUCT
+    ) {
       // Realiza la búsqueda en la base de datos para verificar si el producto existe
       const productoEncontrado = productos.find(
         (producto) => producto.Codigo.toLowerCase() === inputValue
@@ -254,6 +279,20 @@ function CrearPedidoAlterno() {
     });
   };
 
+  /** MANEJO DE MENSAJES DE EXITO */
+  const [mostrarClienteCreado, setMostrarClienteCreado] = useState(false);
+  const [mostrarCPedidoCreado, setMostrarPedidoCreado] = useState(false);
+
+  const handleHiderClienteCreado = () => {
+    setTimeout(() => {
+      setMostrarClienteCreado(false);
+    }, 3000); // Ocultar el mensaje después de 3 segundos
+  };
+  const handleHidePedidoCreado = () => {
+    setTimeout(() => {
+      setMostrarPedidoCreado(false);
+    }, 3000); // Ocultar el mensaje después de 3 segundos
+  };
   return (
     <div>
       <h1 className="text-2xl text-white font-bold text-center py-4">
@@ -269,13 +308,15 @@ function CrearPedidoAlterno() {
         onSubmit={async (values, { setSubmitting, resetForm }) => {
           // Aquí manejarías la lógica para enviar los datos del formulario
           values.Cliente = clienteExistente._id;
-
           values.Recibio = empleadoExistente._id;
+          console.log(values.ObservacionesG);
+          const ObsG = values.ObservacionesG;
 
           /** Cambiando valores a Objeto Pedido */
           const pedidoDto1 = {
             Cliente: clienteExistente._id,
             Recibio: empleadoExistente._id,
+            Observaciones_Generales: ObsG,
             Items: items.map((item) => ({
               // Accede directamente a items desde el estado
               Cantidad: item.Cantidad,
@@ -286,7 +327,8 @@ function CrearPedidoAlterno() {
           };
 
           crearPedido(pedidoDto1);
-          
+          setMostrarPedidoCreado(true);
+          handleHidePedidoCreado();
 
           resetForm();
           setInputValue(""); // Limpiar el estado del campo de entrada del cliente
@@ -302,6 +344,7 @@ function CrearPedidoAlterno() {
       >
         {({ isSubmitting }) => (
           <Form className="bg-slate-300 p-4 border">
+            {/**Campo Cliente */}
             <div>
               <label
                 for="Cliente"
@@ -309,7 +352,6 @@ function CrearPedidoAlterno() {
               >
                 Cliente
               </label>
-
               <input
                 className=" px-4 py-2 bg-gray-50 border border-gray-300 text-gray-800 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-200 dark:border-gray-600 dark:placeholder-gray-800 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 type="text"
@@ -323,7 +365,6 @@ function CrearPedidoAlterno() {
               <div>
                 {/* Muestra los detalles del cliente si existe */}
                 {clienteExistente && <div>{clienteExistente.Nombre}</div>}
-
                 {/* Muestra el modal si el cliente no existe */}
                 {!clienteExistente && (
                   <Modal
@@ -361,71 +402,87 @@ function CrearPedidoAlterno() {
                     </div>
                     {/* Contenido del modal */}
 
-                    <Form className="p-4 md:p-5">
-                      <div>
-                        <label
-                          class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                          htmlFor="Cantidad"
-                        >
-                          Nombre
-                        </label>
-                        <Field
-                          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-red-200 dark:border-gray-500 dark:placeholder-gray-800 dark:text-black dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                          type="text"
-                          id="Cantidad"
-                          name="Cantidad"
-                        />
-                        <ErrorMessage name="Cantidad" component="div" />
-                      </div>
+                    <Formik
+                      className="p-4 md:p-5"
+                      initialValues={{ nombre: "", nit: "", codigo: "" }}
+                      onSubmit={(values) => {
+                        const cliente = {
+                          Nombre: values.nombre,
+                          Nit: values.nit,
+                          Codigo: values.codigo,
+                        };
+                        console.log("Cliente", cliente);
+                        CrearCliente(cliente);
+                        handleCloseModal();
+                        setMostrarClienteCreado(true);
+                        handleHiderClienteCreado();
+                        setClientesActualizados(true)
+                      }}
+                    >
+                      {() => (
+                        <Form>
+                          <div>
+                            <label
+                              class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                              htmlFor="Cantidad"
+                            >
+                              Nombre
+                            </label>
+                            <Field
+                              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-red-200 dark:border-gray-500 dark:placeholder-gray-800 dark:text-black dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                              type="text"
+                              id="nombre"
+                              name="nombre"
+                            />
+                          </div>
 
-                      <div>
-                        <label
-                          class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                          htmlFor="Peso"
-                        >
-                          Nit
-                        </label>
-                        <Field
-                          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-red-200 dark:border-gray-500 dark:placeholder-gray-800 dark:text-black dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                          type="text"
-                          id="Peso"
-                          name="Peso"
-                        />
-                        <ErrorMessage name="Peso" component="div" />
-                      </div>
+                          <div>
+                            <label
+                              class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                              htmlFor="Peso"
+                            >
+                              Nit
+                            </label>
+                            <Field
+                              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-red-200 dark:border-gray-500 dark:placeholder-gray-800 dark:text-black dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                              type="numeric"
+                              id="nit"
+                              name="nit"
+                            />
+                          </div>
 
-                      <div>
-                        <label
-                          class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                          htmlFor="Observaciones"
-                        >
-                          Código
-                        </label>
-                        <Field
-                          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-red-200 dark:border-gray-500 dark:placeholder-gray-800 dark:text-black dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                          type="text"
-                          id="Observaciones"
-                          name="Observaciones"
-                        />
-                        <ErrorMessage name="Observaciones" component="div" />
-                      </div>
+                          <div>
+                            <label
+                              class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                              htmlFor="Observaciones"
+                            >
+                              Código
+                            </label>
+                            <Field
+                              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-red-200 dark:border-gray-500 dark:placeholder-gray-800 dark:text-black dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                              type="text"
+                              id="codigo"
+                              name="codigo"
+                            />
+                          </div>
 
-                      {/* Resto de los campos del formulario... */}
+                          {/* Resto de los campos del formulario... */}
 
-                      <button
-                        class="text-white  my-4 mx-28 inline-flex items-center bg-orange-400 hover:bg-orange-400 focus:ring-4 focus:outline-none focus:ring-orange-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-orange-400 dark:hover:bg-amber-600 dark:focus:ring-orange-500"
-                        type="submit"
-                        onClick={handleCloseModal}
-                      >
-                        Crear Cliente
-                      </button>
-                    </Form>
+                          <button
+                            class="text-white  my-4 mx-28 inline-flex items-center bg-orange-400 hover:bg-orange-400 focus:ring-4 focus:outline-none focus:ring-orange-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-orange-400 dark:hover:bg-amber-600 dark:focus:ring-orange-500"
+                            type="submit"
+                          >
+                            Crear Cliente
+                          </button>
+                        </Form>
+                      )}
+                    </Formik>
                   </Modal>
                 )}
               </div>
               <ErrorMessage name="cliente" component="div" />
             </div>
-
+            {/**Campo Item */}
             {/** CReando nuevo item a traves de una tabla */}
             <br />
             <label className="px-3 block mb-2 text-lg font-medium text-gray-900 dark:text-black">
@@ -471,40 +528,45 @@ function CrearPedidoAlterno() {
                               Cantidad: e.target.value,
                             })
                           }
-                          
                           disabled={showModal}
                         />
                         <ErrorMessage name="cantidad" component="div" />
                       </td>
                       <td class="px-6 py-4">
                         <Field
-                          className=" px-4 py-2 bg-gray-50 border border-gray-300 text-gray-800 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-200 dark:border-gray-600 dark:placeholder-gray-800 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                          type="text"
-                          name="Peso"
-                          value={item.Peso} // Usar el valor del ítem actual en lugar de newItem
+                          as="select"
+                          className="px-4 py-2 bg-gray-50 border border-gray-300 text-gray-800 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-200 dark:border-gray-600 dark:placeholder-gray-800 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                          name={`items[${index}].Peso`}
+                          value={item.Peso || ""}
                           onChange={(e) =>
                             handleItemChange(index, {
                               ...item,
                               Peso: e.target.value,
                             })
                           }
-                          disabled={showModal}
+                        >
+                          <option value="">Selecciona una opción</option>
+                          <option value="Unidad">Unidad</option>
+                          <option value="Libra">Libra</option>
+                          <option value="Gramos">Gramos</option>
+                          <option value="Kilo">Kilo</option>
+                        </Field>
+                        <ErrorMessage
+                          name={`items[${index}].Peso`}
+                          component="div"
                         />
-                        <ErrorMessage name={`items[${index}].Peso`} />
                       </td>
                       <td class="px-6 py-4">
                         <Field
                           className=" px-4 py-2 bg-gray-50 border border-gray-300 text-gray-800 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-200 dark:border-gray-600 dark:placeholder-gray-800 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
                           name="Producto" // Agrega el name para identificar el campo
                           type="text"
-                          value={item.Producto ? item.Producto.Codigo : ""} 
+                          value={item.Producto ? item.Producto.Codigo : ""}
                           onChange={(e) => handleInputChange2(e, index)}
                           placeholder="Buscar corte por código"
                           onBlur={() => handleInputBlurProducto(index)}
-                          
                         />
 
-                        
                         <ErrorMessage name={`items[${index}].Producto`} />
                       </td>
                       <td class="px-6 py-4">
@@ -519,7 +581,6 @@ function CrearPedidoAlterno() {
                               Observaciones: e.target.value,
                             })
                           }
-                          disabled={showModal}
                         />
                         <ErrorMessage name={`items[${index}].Observaciones`} />
                       </td>
@@ -547,17 +608,27 @@ function CrearPedidoAlterno() {
                 Agregar ítem
               </button>
               {/* Muestra los detalles del producto si existe */}
-              
-              {productoExistente && (
-                           <span
-                className="py-2.5 px-5  me-2 mb-2 text-sm font-medium text-gray-900 focus:outline-none bg-red-400 rounded-lg border border-gray-200 focus:ring-gray-100 dark:bg-red-200 dark:text-gray-500 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
-                > Nombre producto: {productoExistente.Nombre}</span> 
-                          )}
-              
-                          
-                        
-            </div>
 
+              {productoExistente && (
+                <span className="py-2.5 px-5  me-2 mb-2 text-sm font-medium text-gray-900 focus:outline-none bg-red-400 rounded-lg border border-gray-200 focus:ring-gray-100 dark:bg-red-200 dark:text-gray-500 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
+                  {" "}
+                  Nombre producto: {productoExistente.Nombre}
+                </span>
+              )}
+            </div>
+            {/**Campo Observaciones Generales */}
+            <div>
+              <label className="px-3 block mb-2 text-lg font-medium text-gray-900 dark:text-black">
+                Observaciones Generales
+              </label>
+              <Field
+                className=" px-4 py-2 bg-gray-50 border border-gray-300 text-gray-800 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-200 dark:border-gray-600 dark:placeholder-gray-800 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                as="textarea"
+                name="ObservacionesG"
+                placeholder="Ingrese Observaciones Generales al Pedido"
+              />
+            </div>
+            {/**Campo Recibe */}
             <div>
               <label
                 className="px-3 block mb-2 text-lg font-medium text-gray-900 dark:text-black"
@@ -573,59 +644,83 @@ function CrearPedidoAlterno() {
                 value={inputValue3}
                 onChange={handleInputChange3}
                 placeholder="Buscar empleado por código"
-                disabled={showModal}
               />
               <div>
                 {/* Muestra los detalles del producto si existe */}
                 {empleadoExistente && (
                   <div>
-                    {empleadoExistente.Codigo} - {empleadoExistente.Nombre}
+                    {empleadoExistente.Nombre}
                   </div>
                 )}
               </div>
               <ErrorMessage name="recibioPedido" component="div" />
             </div>
+
             {/* Renderiza el mensaje si el cliente no existe */}
 
             {showModal2 && (
               <div>
                 <Modal
-              style={customStyles}
-              isOpen={showModal2}
-              onClose={handleCloseModalProducto}
-            >
-               <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                  Producto no existe
-                </h3>
-                <button
-                  type="button"
-                  onClick={handleCloseModalProducto}
-                  class="text-orange-200 bg-transparent hover:bg-orange-400 hover:text-orange-400 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-orange-400 dark:hover:text-white"
-                  data-modal-toggle="crud-modal"
+                  style={customStyles}
+                  isOpen={showModal2}
+                  onClose={handleCloseModalProducto}
                 >
-                  <svg
-                    class="w-3 h-3"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 14 14"
-                  >
-                    <path
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
-                    />
-                  </svg>
-                  <span class="sr-only">Close modal</span>
-                </button>
+                  <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                      Producto no existe
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={handleCloseModalProducto}
+                      class="text-orange-200 bg-transparent hover:bg-orange-400 hover:text-orange-400 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-orange-400 dark:hover:text-white"
+                      data-modal-toggle="crud-modal"
+                    >
+                      <svg
+                        class="w-3 h-3"
+                        aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 14 14"
+                      >
+                        <path
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
+                        />
+                      </svg>
+                      <span class="sr-only">Close modal</span>
+                    </button>
+                  </div>
+                  {/* Contenido del modal */}
+                </Modal>
               </div>
-              {/* Contenido del modal */}
+            )}
 
-              
-            </Modal>
+            {/** MODAL PEDIDO CREADO */}
+            {mostrarCPedidoCreado && (
+              <div>
+                <Modal style={customStyles} isOpen={mostrarCPedidoCreado}>
+                  <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                      Pedido Creado exitosamente!!
+                    </h3>
+                  </div>
+                </Modal>
+              </div>
+            )}
+
+            {/** MODAL ClIENTE CREADO */}
+            {mostrarClienteCreado && (
+              <div>
+                <Modal style={customStyles} isOpen={mostrarClienteCreado}>
+                  <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                      Cliente registrado exitosamente!!
+                    </h3>
+                  </div>
+                </Modal>
               </div>
             )}
             <div className=" grid content-center ">

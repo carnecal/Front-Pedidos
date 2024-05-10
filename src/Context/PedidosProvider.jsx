@@ -1,10 +1,12 @@
-import { createContext, useContext, useState } from "react";
-import { ConsultarClientes } from "../api/Cliente.api";
+import { createContext, useContext, useEffect, useState } from "react";
+import { ConsultarClientes, CrearCliente } from "../api/Cliente.api";
 import { PedidosContext } from "./PedidosContext";
-import { ConsultarPedidoRequest, ConsultarPedidoxIdRequest, CrearPedidoRequest, EditarPedidoRequest } from "../api/Pedido.api";
+import { ConsultarPedidoRequest, ConsultarPedidoxIdRequest, ConsultarTodosPedidos, CrearPedidoRequest, EditarPedidoRequest } from "../api/Pedido.api";
 import { ConsultarEmpleadoRequest } from "../api/Empleados.api";
-import { ConsultarProductosRequest } from "../api/Productos.api";
-import moment from 'moment-timezone';
+import { ConsultarProductosRequest} from "../api/Productos.api";
+import * as moment from "moment-timezone";
+import { useCallback } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
 const apiUrl = import.meta.env.REACT_APP_API_URL;
 
 
@@ -24,77 +26,88 @@ export const PedidosContextProvider = ({ children }) => {
   const [empleados, setEmpleados] = useState([]);
 
   /** Funciones de Crear pedido */
-  async function cargarClientes() {
+  const cargarClientes = useCallback(async () => {
     const response = await ConsultarClientes();
     setClientes(response.data);
-  }
+  }, []);
 
-  async function cargarProductos() {
+  const cargarProductos = useCallback(async () => {
     const response = await ConsultarProductosRequest();
     setProductos(response.data);
-  }
+  }, []);
 
-  async function cargarEmpleados() {
-    const response = await ConsultarEmpleadoRequest()
+  const cargarEmpleados = useCallback(async () => {
+    const response = await ConsultarEmpleadoRequest();
     setEmpleados(response.data);
-  }
+  }, []);
   /** Funciones de Listar Pedido */
   const [pedidos, setPedidos]=useState([])
   
 
-  const crearPedido = async (pedido)=>{
+  const crearPedido = useCallback(async (pedido) => {
     try {
       const respuesta = await CrearPedidoRequest(pedido);
-      setPedidos([...pedidos, respuesta.data])
-      // Limpia los estados de los campos del formulario después de enviar los datos
-      
+      setPedidos([...pedidos, respuesta.data]);
     } catch (error) {
       console.log(error);
     }
-  }
+  }, [pedidos]);
+
+  const crearCliente = useCallback(async (cliente) => {
+    try {
+      const respuesta = await CrearCliente(cliente);
+      return respuesta.data;
+    } catch (error) {
+      console.log(error);
+    }
+  }, []);
+
 
   /** Funciones Editar pedido */
-  const editarPedido = async (id, pedido)=>{
+  const editarPedido = useCallback(async (id, pedido) => {
     try {
-      const respuesta = await EditarPedidoRequest(id,pedido);
-      setPedidos([...pedidos, respuesta.data])
-      // Limpia los estados de los campos del formulario después de enviar los datos
-      
+      const respuesta = await EditarPedidoRequest(id, pedido);
+      setPedidos([...pedidos, respuesta.data]);
+      console.log(respuesta.data)
     } catch (error) {
       console.log(error);
     }
-  }
+  }, [pedidos]);
 
   /**Funciones de PedidoCard */
   
+/**CARGAR PEDIDOS */
+  const cargarPedido = useCallback(async () => {
+    const response = await ConsultarPedidoRequest();
+    setPedidos(response.data);
+  }, []);
 
-  async function cargarPedido() {
-    const response= await ConsultarPedidoRequest()
-    setPedidos(response.data)
-   //setPedidos(pedidos.filter( p => p.Estado ==false))
-  }
+  const [pedidosTodos, setPedidosTodos] = useState([]);
 
-  async function handleRefresh(){
-    setPedidos(pedidos.filter(p => p.Estado == false))
-    
-  }
-  const handleEmpacado = async (id, pedido1) => {
+  const cargarTodosPedidos = useCallback(async () => {
+    const response = await ConsultarTodosPedidos();
+    setPedidosTodos(response.data);
+  }, []);
+
+;
+
+  const navigate = useNavigate();
+
+  const handleRefresh = useCallback(() => {
+    navigate('/PedidosCola')
+  }, []);
+
+  const handleEmpacado = useCallback(async (id, pedido1) => {
     console.log("Empacado");
+    const horaActual = moment.tz(Date.now(), "America/Bogota").format('YYYY-MM-DD h:mm:ss A');
     try {
-      const horaActual = moment.tz(Date.now(),"America/Bogota").format('YYYY-MM-DD h:mm:ss  A')
-  
-      const datosActualizados = {
-        ...pedido1,
-        Hora_Despacho: horaActual,
-        Estado: true,
-      };
-  
-      const response = await EditarPedidoRequest(id, datosActualizados);
-      setPedidos(pedidos.filter(p => p.Estado === false));
-    } catch (error) {
+        const datosActualizados = { ...pedido1, Hora_Despacho: horaActual, Estado: true };
+        editarPedido(id, datosActualizados)
+          } catch (error) {
       console.log(error);
     }
-  };
+  }, [pedidos]);
+
 
   /** Funciones generales */
   
@@ -103,8 +116,9 @@ export const PedidosContextProvider = ({ children }) => {
   <PedidosContext.Provider value={
     {/** Crear Pedido */
       clientes,productos,empleados, crearPedido, cargarClientes,cargarProductos,cargarEmpleados,
+      crearCliente,cargarClientes,
       /** Listar Pedidos */
-      pedidos,cargarPedido,
+      pedidos,cargarPedido,cargarTodosPedidos, pedidosTodos,
       /** CardPedidos */
       handleEmpacado, handleRefresh,
       /**Editar Pedido */

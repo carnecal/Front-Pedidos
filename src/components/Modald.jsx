@@ -1,16 +1,9 @@
-import React from 'react';
+import React from 'react'
 
-const Modald = ({ isOpen, onClose, children }) => {
-  if (!isOpen) return null;
-
+function Modald() {
   return (
-    <div className="modal">
-      <div className="modal-content">
-        <span className="close" onClick={onClose}>&times;</span>
-        {children}
-      </div>
-    </div>
-  );
-};
+    <div>Modald</div>
+  )
+}
 
-export default Modald;
+export default Modald

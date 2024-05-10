@@ -1,9 +1,9 @@
 import axios from "axios";
-const apiUrl = import.meta.env.REACT_APP_API_URL;
+const API_URL = import.meta.env.VITE_API_URL
 
 
 export const CrearEmpleadoRequest= async (empleado)=>
-    await axios.post(`https://api-pedidos-rgwh.onrender.com/empleado`, empleado)
+    await axios.post(`${API_URL}/empleado`, empleado)
 
 export const ConsultarEmpleadoRequest= async ()=>
-    await axios.get(`https://api-pedidos-rgwh.onrender.com/empleado`)
+    await axios.get(`${API_URL}/empleado`)
